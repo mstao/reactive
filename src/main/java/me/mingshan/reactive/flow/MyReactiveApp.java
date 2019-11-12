@@ -28,7 +28,7 @@ public class MyReactiveApp {
       Thread.sleep(10);
     }
     // close the Publisher
-    publisher.close();
+    //publisher.close();
 
     System.out.println("Exiting the app");
 

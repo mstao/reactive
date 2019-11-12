@@ -11,7 +11,7 @@ public class MySubscriber implements Flow.Subscriber<Employee> {
   public void onSubscribe(Flow.Subscription subscription) {
     System.out.println("Subscribed");
     this.subscription = subscription;
-    subscription.request(10);
+    subscription.request(1);
     System.out.println("onSubscribe requested 1 item");
   }
 
