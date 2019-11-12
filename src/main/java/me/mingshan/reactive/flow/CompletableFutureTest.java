@@ -2,9 +2,12 @@ package me.mingshan.reactive.flow;
 
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class CompletableFutureTest {
 
@@ -208,6 +211,34 @@ public class CompletableFutureTest {
     });
 
     System.out.println(future.get());
+  }
+
+  @Test
+  public void test12() {
+    List<String> webPageLinks = Arrays.asList("1", "2");
+
+    List<CompletableFuture<String>> futures = webPageLinks.stream()
+      .map(this::downloadWebPage).collect(Collectors.toList());
+
+    // 注意这里返回泛型的是空
+    CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]));
+
+    CompletableFuture<List<String>> allFuture = allOf.thenApply(v -> {
+      return futures.stream()
+        .map(CompletableFuture::join)
+        .collect(Collectors.toList());
+    });
+
+    List<String> strings = allFuture.join();
+
+    strings.forEach(System.out::println);
+  }
+
+  private CompletableFuture<String> downloadWebPage(String webPageLink) {
+    return CompletableFuture.supplyAsync(() -> {
+      // DO ANYTHING
+      return "http://www.baidu.com";
+    });
   }
 
   private CompletableFuture<User> getUser(String userId) {

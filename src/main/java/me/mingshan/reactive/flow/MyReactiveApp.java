@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Flow;
 import java.util.concurrent.SubmissionPublisher;
 
 public class MyReactiveApp {
@@ -17,7 +18,9 @@ public class MyReactiveApp {
   public void PsTest() throws InterruptedException {
     SubmissionPublisher<Employee> publisher = new SubmissionPublisher<>();
     MySubscriber subscriber = new MySubscriber();
+    MySubscriber subscriber2 = new MySubscriber();
     publisher.subscribe(subscriber);
+    publisher.subscribe(subscriber2);
     List<Employee> emps = generateEmps();
     // Publish items
     System.out.println("Publishing Items to Subscriber");
@@ -28,10 +31,9 @@ public class MyReactiveApp {
       Thread.sleep(10);
     }
     // close the Publisher
-    //publisher.close();
+    publisher.close();
 
     System.out.println("Exiting the app");
-
   }
 
   @Test
@@ -62,7 +64,6 @@ public class MyReactiveApp {
 
     System.out.println("Exiting the app");
   }
-
 
   private static List<Employee> generateEmps() {
     Employee e1 = new Employee(1, "Pankaj");
