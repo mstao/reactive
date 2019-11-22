@@ -4,9 +4,8 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.Random;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public class CompletableFutureTest {
@@ -44,9 +43,9 @@ public class CompletableFutureTest {
   public void test3() throws ExecutionException, InterruptedException {
     CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
       return Thread.currentThread().getName();
-    });
+    }, Executors.newFixedThreadPool(5));
 
-    System.out.println(future.get());
+    System.out.println(future.join());
   }
 
   /**
@@ -62,7 +61,7 @@ public class CompletableFutureTest {
       return item + "-222222-" + Thread.currentThread().getName();
     });
 
-    System.out.println(future.get());
+    //System.out.println(future.get());
   }
 
   /**
@@ -115,13 +114,14 @@ public class CompletableFutureTest {
     String userId = null;
     //
 
-    CompletableFuture<CompletableFuture<Long>> future = getUser(userId).thenApply(this::getLLL);
+    CompletableFuture<CompletableFuture<User>> future = getUser(userId).thenApply(this::fillRes);
 
 
     // 利用 thenCompose() 组合两个独立的future
-    CompletableFuture<Long> result = getUser(userId)
-      .thenCompose(user -> getLLL(user));
+    CompletableFuture<User> result = getUser(userId)
+      .thenCompose(user -> fillRes(user));
 
+    result.join();
   }
 
   /**
@@ -156,6 +156,20 @@ public class CompletableFutureTest {
         return weightInKg/(heightInMeter*heightInMeter);
       });
 
+    CompletableFuture<String> walker = CompletableFuture.supplyAsync(() -> {
+      return ", Walker";
+    });
+
+    CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+      return "Hello";
+    }).thenApply(s -> s + " World")
+      .thenCombine(walker, (s1, s2) -> {
+        return s1 + s2;
+      });
+
+    System.out.println(future.get());
+
+
     System.out.println("Your BMI is - " + combinedFuture.get());
   }
 
@@ -166,7 +180,7 @@ public class CompletableFutureTest {
   public void test10() throws ExecutionException, InterruptedException {
     int age = -1;
 
-    CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+    CompletableFuture<Void> future = CompletableFuture.supplyAsync(() -> {
       if (age < 0) {
         throw new IllegalArgumentException("Age can not be negative");
       }
@@ -178,9 +192,12 @@ public class CompletableFutureTest {
     }).exceptionally(ex -> {
       System.out.println(ex.getMessage());
       return "Unknown!";
+    }).thenAccept((r) -> {
+      System.out.println("result = " + r);
+      System.out.println("Done.");
     });
 
-    System.out.println(future.get());
+    future.join();
   }
 
   /**
@@ -193,7 +210,7 @@ public class CompletableFutureTest {
   public void test11() throws ExecutionException, InterruptedException {
     int age = -1;
 
-    CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+    CompletableFuture<Void> future = CompletableFuture.supplyAsync(() -> {
       if (age < 0) {
         throw new IllegalArgumentException("Age can not be negative");
       }
@@ -208,36 +225,122 @@ public class CompletableFutureTest {
         return "Unknown!";
       }
       return res;
+    }).thenAccept((r) -> {
+      System.out.println(r);
+      System.out.println("Done.");
     });
 
-    System.out.println(future.get());
+    future.join();
+  }
+
+  @Test
+  public void test111() {
+    int age = -1;
+
+    CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+      if (age < 0) {
+        throw new IllegalArgumentException("Age can not be negative");
+      }
+      if (age > 18) {
+        return "Adult";
+      } else {
+        return "Child";
+      }
+    }).whenComplete((res, ex) -> {
+      if (ex == null) {
+        System.out.println(res);
+      } else {
+        throw new RuntimeException(ex);
+      }
+    }).exceptionally(e -> {
+      System.out.println(e.getMessage());
+      return "hello world";
+    });
+
+    future.join();
   }
 
   @Test
   public void test12() {
-    List<String> webPageLinks = Arrays.asList("1", "2");
+    long startTime = System.currentTimeMillis();
+    List<String> webPageLinks = Arrays.asList("1", "2", "3", "4", "5");
 
+// ①
     List<CompletableFuture<String>> futures = webPageLinks.stream()
       .map(this::downloadWebPage).collect(Collectors.toList());
 
-    // 注意这里返回泛型的是空
+    System.out.println("下载中1");
+
+// ②
+// 注意这里返回泛型的是空
     CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]));
 
+    System.out.println("下载中2");
+
+// ③
     CompletableFuture<List<String>> allFuture = allOf.thenApply(v -> {
       return futures.stream()
         .map(CompletableFuture::join)
         .collect(Collectors.toList());
     });
 
+    System.out.println("下载中3");
+
+// ④
     List<String> strings = allFuture.join();
+
+    long endTime = System.currentTimeMillis();
+    System.out.println("总耗时长：" + (endTime - startTime) / 1000);
 
     strings.forEach(System.out::println);
   }
 
+  @Test
+  public void test13() {
+    long startTime = System.currentTimeMillis();
+    List<String> webPageLinks = Arrays.asList("1", "2", "3", "4", "5");
+
+    List<CompletableFuture<String>> futures = webPageLinks.stream()
+      .map(this::downloadWebPage).collect(Collectors.toList());
+
+    // 注意这里返回
+    CompletableFuture<Object> anyOf = CompletableFuture.anyOf(futures.toArray(new CompletableFuture[futures.size()]));
+
+    Object result = anyOf.join();
+
+    System.out.println(result);
+    long endTime = System.currentTimeMillis();
+    System.out.println("总耗时长：" + (endTime - startTime) / 1000);
+  }
+
+  @Test
+  public void test14() {
+    long startTime = System.currentTimeMillis();
+    List<String> webPageLinks = Arrays.asList("1", "2", "3", "4", "5");
+
+// ①
+    List<CompletableFuture<String>> futures = webPageLinks.stream()
+      .map(this::downloadWebPage).collect(Collectors.toList());
+
+    System.out.println("下载中1");
+
+// ②
+// 注意这里返回泛型的是空
+    CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).join();
+  }
+
   private CompletableFuture<String> downloadWebPage(String webPageLink) {
     return CompletableFuture.supplyAsync(() -> {
-      // DO ANYTHING
-      return "http://www.baidu.com";
+      Random random = new Random();
+      int i = random.nextInt(10) + 1;
+      System.out.println(webPageLink + " - " + i);
+      try {
+        Thread.sleep(i * 1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      System.out.println(webPageLink + " - done." );
+      return webPageLink + " - http://www.baidu.com";
     });
   }
 
@@ -248,14 +351,20 @@ public class CompletableFutureTest {
     });
   }
 
-  private CompletableFuture<Long> getLLL(User user) {
+  private CompletableFuture<User> fillRes(User user) {
     return CompletableFuture.supplyAsync(() -> {
-      // DO ANYTHING
-      return 2L;
+      // 获取权限信息，填充到用户信息里面
+      return user;
     });
   }
 
 
   private static class User {
+    List<String> res;
+  }
+
+  @Test
+  public void test() {
+    System.out.println(ForkJoinPool.getCommonPoolParallelism());
   }
 }
