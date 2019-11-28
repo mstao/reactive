@@ -318,14 +318,14 @@ public class CompletableFutureTest {
     long startTime = System.currentTimeMillis();
     List<String> webPageLinks = Arrays.asList("1", "2", "3", "4", "5");
 
-// ①
+    // ①
     List<CompletableFuture<String>> futures = webPageLinks.stream()
       .map(this::downloadWebPage).collect(Collectors.toList());
 
     System.out.println("下载中1");
 
-// ②
-// 注意这里返回泛型的是空
+    // ②
+    // 注意这里返回泛型的是空
     CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).join();
   }
 
