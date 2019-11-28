@@ -265,19 +265,19 @@ public class CompletableFutureTest {
     long startTime = System.currentTimeMillis();
     List<String> webPageLinks = Arrays.asList("1", "2", "3", "4", "5");
 
-// ①
+    // ①
     List<CompletableFuture<String>> futures = webPageLinks.stream()
       .map(this::downloadWebPage).collect(Collectors.toList());
 
     System.out.println("下载中1");
 
-// ②
-// 注意这里返回泛型的是空
+    // ②
+    // 注意这里返回泛型的是空
     CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]));
 
     System.out.println("下载中2");
 
-// ③
+    // ③
     CompletableFuture<List<String>> allFuture = allOf.thenApply(v -> {
       return futures.stream()
         .map(CompletableFuture::join)
@@ -286,7 +286,7 @@ public class CompletableFutureTest {
 
     System.out.println("下载中3");
 
-// ④
+    // ④
     List<String> strings = allFuture.join();
 
     long endTime = System.currentTimeMillis();
